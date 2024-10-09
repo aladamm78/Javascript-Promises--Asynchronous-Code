@@ -1,39 +1,68 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  const favNumber = 78;
-  const baseURL = "http://numbersapi.com";
+  const baseURL = 'https://deckofcardsapi.com/api/deck';
 
-  // 1. Request a single fact about a favorite number
+  // 1. Request a single card
   try {
-    const response = await fetch(`${baseURL}/${favNumber}?json`);
+    const response = await fetch(`${baseURL}/new/draw/`);
     const data = await response.json();
-    console.log(data);
+    const { suit, value } = data.cards[0];
+    console.log(`${value.toLowerCase()} of ${suit.toLowerCase()}`);
   } catch (error) {
-    console.error('Error fetching fact about favorite number:', error);
+    console.error('Error fetching single card:', error);
   }
 
-  // 2. Request facts for multiple favorite numbers
-  const favNumbers = [7, 11, 22];
+  // 2. Request two cards from the same deck
   try {
-    const response = await fetch(`${baseURL}/${favNumbers}?json`);
-    const data = await response.json();
-    console.log(data);
-  } catch (error) {
-    console.error('Error fetching multiple number facts:', error);
-  }
+    const firstResponse = await fetch(`${baseURL}/new/draw/`);
+    const firstData = await firstResponse.json();
+    const firstCard = firstData.cards[0];
+    const deckId = firstData.deck_id;
 
-  // 3. Request four facts about a favorite number
-  const facts = [];
-  try {
-    for (let i = 0; i < 4; i++) {
-      const response = await fetch(`${baseURL}/${favNumber}?json`);
-      const data = await response.json();
-      facts.push(data.text);
-    }
+    const secondResponse = await fetch(`${baseURL}/${deckId}/draw/`);
+    const secondData = await secondResponse.json();
+    const secondCard = secondData.cards[0];
 
-    facts.forEach(fact => {
-      document.getElementById('facts-area').insertAdjacentHTML('beforeend', `<p class="fact">${fact}</p>`);
+    [firstCard, secondCard].forEach(card => {
+      console.log(`${card.value.toLowerCase()} of ${card.suit.toLowerCase()}`);
     });
   } catch (error) {
-    console.error('Error fetching multiple facts about favorite number:', error);
+    console.error('Error fetching two cards:', error);
   }
+
+  // 3. HTML page with a button to draw cards
+  let deckId = null;
+  const $btn = document.querySelector('button');
+  const $cardArea = document.getElementById('card-area');
+
+  try {
+    const shuffleResponse = await fetch(`${baseURL}/new/shuffle/`);
+    const shuffleData = await shuffleResponse.json();
+    deckId = shuffleData.deck_id;
+    $btn.style.display = 'block'; // Show button
+  } catch (error) {
+    console.error('Error shuffling deck:', error);
+  }
+
+  $btn.addEventListener('click', async () => {
+    try {
+      const drawResponse = await fetch(`${baseURL}/${deckId}/draw/`);
+      const drawData = await drawResponse.json();
+      const cardSrc = drawData.cards[0].image;
+      const angle = Math.random() * 90 - 45;
+      const randomX = Math.random() * 40 - 20;
+      const randomY = Math.random() * 40 - 20;
+
+      const img = document.createElement('img');
+      img.src = cardSrc;
+      img.style.transform = `translate(${randomX}px, ${randomY}px) rotate(${angle}deg)`;
+      img.style.transition = 'transform 0.5s ease';
+      $cardArea.appendChild(img);
+
+      if (drawData.remaining === 0) {
+        $btn.remove();
+      }
+    } catch (error) {
+      console.error('Error drawing a card:', error);
+    }
+  });
 });
